@@ -61,9 +61,9 @@ contract P2PLending { // Contract name - P2PLending
     event GuaranteeWithdrawn(uint256 indexed loanId); // Event for guarantee withdrawn with loanId as parameter - uint256
 
     function requestLoan(uint256 _amount, uint256 _repaymentDate, uint256 _interest) external { // Function to request loan with amount, repaymentDate, interest as parameters - uint256, uint256, uint256 
-        require(_amount > 0, "Loan amount must be greater than 0"); // Require loan amount to be greater than 0. Message - "Loan amount must be greater than 0" if condition is not met.
-        require(_repaymentDate > block.timestamp, "Repayment date must be in the future"); // Require repayment date to be in the future. Message - "Repayment date must be in the future" if condition is not met.
-        require(_interest > 0, "Interest must be greater than 0"); // Require interest to be greater than 0. Message - "Interest must be greater than 0" if condition is not met.
+        require(_amount > 0, "Loan amount must be greater than 0"); // Require loan amount to be greater than 0. if condition is not met, show message - "Loan amount must be greater than 0" and revert.
+        require(_repaymentDate > block.timestamp, "Repayment date must be in the future"); // Require repayment date to be in the future. If condition is not met, show message - "Repayment date must be in the future" and revert.
+        require(_interest > 0, "Interest must be greater than 0"); // Require interest to be greater than 0. If condition is not met, show message - "Interest must be greater than 0" and revert.
 
         loanRequestCount++; // Increment loan request count by 1. 
         loanRequests[loanRequestCount] = LoanRequest({ // Add loan request to loanRequests mapping with loanId as key and LoanRequest as value.  
@@ -84,10 +84,10 @@ contract P2PLending { // Contract name - P2PLending
 
     function provideGuarantee(uint256 _loanId, uint256 _guarantorInterest) external payable { // Function to provide guarantee with loanId, guarantorInterest as parameters - uint256, uint256
         LoanRequest storage loan = loanRequests[_loanId]; // Get loan request with loanId from loanRequests mapping. 
-        require(loan.isActive, "Loan request is not active"); // Require loan request to be active. Message - "Loan request is not active" if condition is not met.
-        require(!loan.isGuaranteed, "Loan is already guaranteed"); // Require loan to not be guaranteed. Message - "Loan is already guaranteed" if condition is not met. 
-        require(msg.value == loan.amount, "Incorrect guarantee amount"); // Require guarantee amount to be equal to loan amount. Message - "Incorrect guarantee amount" if condition is not met. 
-        require(_guarantorInterest < loan.interest, "Guarantor interest cannot exceed total interest"); // Require guarantor interest to be less than total interest. Message - "Guarantor interest cannot exceed total interest" if condition is not met. 
+        require(loan.isActive, "Loan request is not active"); // Require loan request to be active. If condition is not met, show message - "Loan request is not active" and revert.
+        require(!loan.isGuaranteed, "Loan is already guaranteed"); // Require loan to not be guaranteed. If condition is not met, show message - "Loan is already guaranteed" and revert.
+        require(msg.value == loan.amount, "Incorrect guarantee amount"); // Require guarantee amount to be equal to loan amount. If condition is not met, show message - "Incorrect guarantee amount" and revert.
+        require(_guarantorInterest < loan.interest, "Guarantor interest cannot exceed total interest"); // Require guarantor interest to be less than total interest. If condition is not met, show message - "Guarantor interest cannot exceed total interest" and revert. 
 
         loan.guarantor = payable(msg.sender); // Set guarantor as sender of transaction - payable.
         loan.guarantorInterest = _guarantorInterest; // Set guarantorInterest as input parameter - _guarantorInterest.
@@ -98,18 +98,18 @@ contract P2PLending { // Contract name - P2PLending
 
     function acceptGuarantee(uint256 _loanId) external { // Function to accept guarantee with loanId as parameter - uint256. 
         LoanRequest storage loan = loanRequests[_loanId]; // Get loan request with loanId from loanRequests mapping.
-        require(msg.sender == loan.borrower, "Only borrower can accept guarantee"); // Require sender of transaction to be borrower. Message - "Only borrower can accept guarantee" if condition is not met.
-        require(loan.isGuaranteed, "No guarantee to accept"); // Require loan to be guaranteed. Message - "No guarantee to accept" if condition is not met.
-        require(loan.isActive, "Loan request is not active"); // Require loan request to be active. Message - "Loan request is not active" if condition is not met.
+        require(msg.sender == loan.borrower, "Only borrower can accept guarantee"); // Require sender of transaction to be borrower. If condition is not met, show message - "Only borrower can accept guarantee" and revert.
+        require(loan.isGuaranteed, "No guarantee to accept"); // Require loan to be guaranteed. If condition is not met, show message - "No guarantee to accept" and revert.
+        require(loan.isActive, "Loan request is not active"); // Require loan request to be active. If condition is not met, show message - "Loan request is not active" and revert.
 
         emit GuaranteeAccepted(_loanId);
     }
 
     function rejectGuarantee(uint256 _loanId) external { // Function to reject guarantee with loanId as parameter - uint256.
         LoanRequest storage loan = loanRequests[_loanId]; // Get loan request with loanId from loanRequests mapping.
-        require(msg.sender == loan.borrower, "Only borrower can reject guarantee"); // Require sender of transaction to be borrower. Message - "Only borrower can reject guarantee" if condition is not met.
-        require(loan.isGuaranteed, "No guarantee to reject"); // Require loan to be guaranteed. Message - "No guarantee to reject" if condition is not met.
-        require(loan.isActive, "Loan request is not active"); // Require loan request to be active. Message - "Loan request is not active" if condition is not met.
+        require(msg.sender == loan.borrower, "Only borrower can reject guarantee"); // Require sender of transaction to be borrower. If condition is not met, show message - "Only borrower can reject guarantee" and revert.
+        require(loan.isGuaranteed, "No guarantee to reject"); // Require loan to be guaranteed. If condition is not met, show message - "No guarantee to reject" and revert.
+        require(loan.isActive, "Loan request is not active"); // Require loan request to be active. If condition is not met, show message - "Loan request is not active" and revert.
 
         address payable guarantor = loan.guarantor; // Get guarantor address from loan request. 
         uint256 guaranteeAmount = loan.amount; // Get guarantee amount from loan request.
@@ -125,10 +125,10 @@ contract P2PLending { // Contract name - P2PLending
 
     function provideLoan(uint256 _loanId) external payable { // Function to provide loan with loanId as parameter - uint256. 
         LoanRequest storage loan = loanRequests[_loanId]; // Get loan request with loanId from loanRequests mapping. 
-        require(loan.isActive, "Loan request is not active"); // Require loan request to be active. Message - "Loan request is not active" if condition is not met.
-        require(loan.isGuaranteed, "Loan must be guaranteed"); // Require loan to be guaranteed. Message - "Loan must be guaranteed" if condition is not met. 
-        require(msg.value == loan.amount, "Incorrect loan amount"); // Require loan amount to be equal to input value. Message - "Incorrect loan amount" if condition is not met.
-        require(loan.lender == address(0), "Loan already funded"); // Require loan to not be funded. Message - "Loan already funded" if condition is not met.
+        require(loan.isActive, "Loan request is not active"); // Require loan request to be active. If condition is not met, show message - "Loan request is not active" and revert.
+        require(loan.isGuaranteed, "Loan must be guaranteed"); // Require loan to be guaranteed. If condition is not met, show message - "Loan must be guaranteed" and revert.
+        require(msg.value == loan.amount, "Incorrect loan amount"); // Require loan amount to be equal to input value. If condition is not met, show message - "Incorrect loan amount" and revert.
+        require(loan.lender == address(0), "Loan already funded"); // Require loan to not be funded. If condition is not met, show message - "Loan already funded" and revert.
 
         loan.lender = payable(msg.sender); // Set lender as sender of transaction - payable.
         loan.borrower.transfer(loan.amount); // Transfer loan amount to borrower. 
@@ -138,10 +138,10 @@ contract P2PLending { // Contract name - P2PLending
 
     function repayLoan(uint256 _loanId) external payable { // Function to repay loan with loanId as parameter - uint256. 
         LoanRequest storage loan = loanRequests[_loanId]; // Get loan request with loanId from loanRequests mapping.  
-        require(msg.sender == loan.borrower, "Only borrower can repay loan"); // Require sender of transaction to be borrower. Message - "Only borrower can repay loan" if condition is not met.
-        require(loan.lender != address(0), "Loan not yet funded"); // Require loan to be funded. Message - "Loan not yet funded" if condition is not met.
-        require(!loan.isRepaid, "Loan already repaid"); // Require loan to not be repaid. Message - "Loan already repaid" if condition is not met.
-        require(msg.value == loan.amount + loan.interest, "Incorrect repayment amount"); // Require repayment amount to be equal to loan amount + interest. Message - "Incorrect repayment amount" if condition is not met.
+        require(msg.sender == loan.borrower, "Only borrower can repay loan"); // Require sender of transaction to be borrower. If condition is not met, show message - "Only borrower can repay loan" and revert.
+        require(loan.lender != address(0), "Loan not yet funded"); // Require loan to be funded. If condition is not met, show message - "Loan not yet funded" and revert.
+        require(!loan.isRepaid, "Loan already repaid"); // Require loan to not be repaid. If condition is not met, show message - "Loan already repaid" and revert.
+        require(msg.value == loan.amount + loan.interest, "Incorrect repayment amount"); // Require repayment amount to be equal to loan amount + interest. If condition is not met, show message - "Incorrect repayment amount" and revert.
 
         loan.isRepaid = true; // Set isRepaid as true.
         loan.isActive = false; // Set isActive as false.
@@ -154,10 +154,10 @@ contract P2PLending { // Contract name - P2PLending
 
     function withdrawGuarantee(uint256 _loanId) external { // Function to withdraw guarantee with loanId as parameter - uint256.
         LoanRequest storage loan = loanRequests[_loanId]; // Get loan request with loanId from loanRequests mapping.
-        require(msg.sender == loan.lender, "Only lender can withdraw guarantee"); // Require sender of transaction to be lender. Message - "Only lender can withdraw guarantee" if condition is not met.
-        require(loan.lender != address(0), "Loan not yet funded"); // Require loan to be funded. Message - "Loan not yet funded" if condition is not met.
-        require(!loan.isRepaid, "Loan already repaid"); // Require loan to not be repaid. Message - "Loan already repaid" if condition is not met.
-        require(block.timestamp > loan.repaymentDate, "Repayment date not yet passed"); // Require repayment date to be passed. Message - "Repayment date not yet passed" if condition is not met.
+        require(msg.sender == loan.lender, "Only lender can withdraw guarantee"); // Require sender of transaction to be lender. If condition is not met, show message - "Only lender can withdraw guarantee" and revert.
+        require(loan.lender != address(0), "Loan not yet funded"); // Require loan to be funded. If condition is not met, show message - "Loan not yet funded" and revert.
+        require(!loan.isRepaid, "Loan already repaid"); // Require loan to not be repaid. If condition is not met, show message - "Loan already repaid" and revert.
+        require(block.timestamp > loan.repaymentDate, "Repayment date not yet passed"); // Require repayment date to be passed. If condition is not met, show message - "Repayment date not yet passed" and revert.
 
         loan.isActive = false;  // Set isActive as false. 
         loan.lender.transfer(loan.amount); // Transfer loan amount to lender.
