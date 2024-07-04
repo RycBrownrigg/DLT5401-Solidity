@@ -1,0 +1,314 @@
+<!--
+This HTML file provides a basic user interface for interacting with the P2PLending contract. 
+
+Here's a breakdown of the components:
+
+1.) HTML Structure: The page is divided into sections for different actions (requesting loans, providing guarantees, etc.).
+2.) JavaScript: The script at the bottom of the page contains functions for interacting with the smart contract.
+3.) Web3 Integration: The script uses Web3.js to connect to the Ethereum network and interact with the smart contracts.
+4.) MetaMask Integration: The connectWallet function allows users to connect their MetaMask wallet to the dApp.
+5.) Contract Interaction: Each function (like requestLoan, provideGuarantee, etc.) corresponds to a method in the P2PLending contract.
+
+To use this UI with the P2PLending contract, follow these steps:
+
+1.) Replace p2pLendingABI and loanTokenABI with the actual ABIs of the deployed contracts.
+2.) Replace p2pLendingAddress and loanTokenAddress with the actual addresses of the deployed contracts.
+3.) Host this HTML file on a web server.
+4.) Ensure users have MetaMask or a similar Web3 wallet installed in their browser.
+5.) Users should connect their wallet, then they can interact with the contract through the provided interface.
+
+-->
+
+<!DOCTYPE html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>P2P Lending Platform</title>
+    <script src="https://cdn.jsdelivr.net/npm/web3@1.5.2/dist/web3.min.js"></script>
+    <!-- Web3.js library -->
+    <script src="https://cdn.jsdelivr.net/npm/ethers@5.0.32/dist/ethers.umd.min.js"></script>
+    <!-- Ethers.js library -->
+    <!--  CSS styling -->
+    <style>
+      body {
+        font-family: Arial, sans-serif;
+        max-width: 800px;
+        margin: 0 auto;
+        padding: 20px;
+      }
+      h1,
+      h2 {
+        color: #333;
+      }
+      input,
+      button {
+        margin: 5px 0;
+        padding: 5px;
+      }
+      button {
+        cursor: pointer;
+      }
+      .section {
+        margin-bottom: 20px;
+        border: 1px solid #ddd;
+        padding: 10px;
+      }
+    </style>
+  </head>
+  <body>
+    <h1>P2P Lending Platform</h1>
+
+    <!-- Connect Wallet Section -->
+    <div class="section">
+      <h2>Connect Wallet</h2>
+      <button id="connectWallet">Connect Wallet</button>
+      <p id="walletAddress"></p>
+    </div>
+
+    <!-- LoanToken Actions Section -->
+    <div class="section">
+      <h2>LoanToken Actions</h2>
+      <input type="number" id="approveAmount" placeholder="Amount to approve" />
+      <button onclick="approveLoanToken()">Approve LoanTokens</button>
+    </div>
+
+    <!-- P2PLending Actions Sections -->
+    <div class="section">
+      <h2>Request Loan</h2>
+      <input type="number" id="loanAmount" placeholder="Loan amount" />
+      <input
+        type="number"
+        id="repaymentDate"
+        placeholder="Repayment date (Unix timestamp)"
+      />
+      <input type="number" id="interest" placeholder="Interest amount" />
+      <button onclick="requestLoan()">Request Loan</button>
+    </div>
+
+    <!-- Guarantee Actions Section -->
+    <div class="section">
+      <h2>Provide Guarantee</h2>
+      <input type="number" id="guaranteeLoanId" placeholder="Loan ID" />
+      <input
+        type="number"
+        id="guarantorInterest"
+        placeholder="Guarantor interest"
+      />
+      <button onclick="provideGuarantee()">Provide Guarantee</button>
+    </div>
+
+    <!-- Accept/Reject Guarantee Section -->
+    <div class="section">
+      <h2>Accept/Reject Guarantee</h2>
+      <input type="number" id="guaranteeActionLoanId" placeholder="Loan ID" />
+      <button onclick="acceptGuarantee()">Accept Guarantee</button>
+      <button onclick="rejectGuarantee()">Reject Guarantee</button>
+    </div>
+
+    <!-- Provide Loan Section -->
+    <div class="section">
+      <h2>Provide Loan</h2>
+      <input type="number" id="provideLoanId" placeholder="Loan ID" />
+      <button onclick="provideLoan()">Provide Loan</button>
+    </div>
+
+    <!-- Repay Loan Section -->
+    <div class="section">
+      <h2>Repay Loan</h2>
+      <input type="number" id="repayLoanId" placeholder="Loan ID" />
+      <button onclick="repayLoan()">Repay Loan</button>
+    </div>
+
+    <!-- Withdraw Guarantee Section -->
+    <div class="section">
+      <h2>Withdraw Guarantee</h2>
+      <input type="number" id="withdrawGuaranteeLoanId" placeholder="Loan ID" />
+      <button onclick="withdrawGuarantee()">Withdraw Guarantee</button>
+    </div>
+
+    <!-- Get Loan Details Section -->
+    <div class="section">
+      <h2>Get Loan Details</h2>
+      <input type="number" id="getLoanDetailsId" placeholder="Loan ID" />
+      <button onclick="getLoanDetails()">Get Loan Details</button>
+      <pre id="loanDetails"></pre>
+    </div>
+
+    <!-- JavaScript code for interacting with the smart contract. Including all of the following functions; 
+      - connectWallet
+      - approveLoanToken
+      - requestLoan
+      - provideGuarantee
+      - acceptGuarantee
+      - rejectGuarantee
+      - provideLoan
+      - repayLoan
+      - withdrawGuarantee
+      - getLoanDetails
+    -->
+    <script>
+      let web3;
+      let p2pLendingContract;
+      let loanTokenContract;
+      let currentAccount;
+
+      const p2pLendingABI = [
+        /* Insert P2PLending contract ABI here */
+      ]; // ABI of the P2PLending contract
+      const loanTokenABI = [
+        /* Insert LoanToken contract ABI here */
+      ]; // ABI of the LoanToken contract
+
+      const p2pLendingAddress = "0x..."; // Replace with actual deployed contract address <!-- Address of the P2PLending contract -->
+      const loanTokenAddress = "0x..."; // Replace with actual deployed contract address <!-- Address of the LoanToken contract -->
+
+      async function connectWallet() {
+        if (typeof window.ethereum !== "undefined") {
+          try {
+            await window.ethereum.request({ method: "eth_requestAccounts" });
+            web3 = new Web3(window.ethereum);
+            const accounts = await web3.eth.getAccounts();
+            currentAccount = accounts[0];
+            document.getElementById(
+              "walletAddress"
+            ).innerText = `Connected: ${currentAccount}`;
+
+            p2pLendingContract = new web3.eth.Contract(
+              p2pLendingABI,
+              p2pLendingAddress
+            );
+            loanTokenContract = new web3.eth.Contract(
+              loanTokenABI,
+              loanTokenAddress
+            );
+          } catch (error) {
+            console.error("User denied account access");
+          }
+        } else {
+          console.log("Please install MetaMask!");
+        }
+      }
+
+      async function approveLoanToken() {
+        const amount = document.getElementById("approveAmount").value;
+        try {
+          await loanTokenContract.methods
+            .approve(p2pLendingAddress, amount)
+            .send({ from: currentAccount });
+          alert("Approval successful");
+        } catch (error) {
+          console.error("Error in approval:", error);
+        }
+      }
+
+      async function requestLoan() {
+        const amount = document.getElementById("loanAmount").value;
+        const repaymentDate = document.getElementById("repaymentDate").value;
+        const interest = document.getElementById("interest").value;
+        try {
+          await p2pLendingContract.methods
+            .requestLoan(amount, repaymentDate, interest)
+            .send({ from: currentAccount });
+          alert("Loan request submitted");
+        } catch (error) {
+          console.error("Error in requesting loan:", error);
+        }
+      }
+
+      async function provideGuarantee() {
+        const loanId = document.getElementById("guaranteeLoanId").value;
+        const guarantorInterest =
+          document.getElementById("guarantorInterest").value;
+        try {
+          await p2pLendingContract.methods
+            .provideGuarantee(loanId, guarantorInterest)
+            .send({ from: currentAccount });
+          alert("Guarantee provided");
+        } catch (error) {
+          console.error("Error in providing guarantee:", error);
+        }
+      }
+
+      async function acceptGuarantee() {
+        const loanId = document.getElementById("guaranteeActionLoanId").value;
+        try {
+          await p2pLendingContract.methods
+            .acceptGuarantee(loanId)
+            .send({ from: currentAccount });
+          alert("Guarantee accepted");
+        } catch (error) {
+          console.error("Error in accepting guarantee:", error);
+        }
+      }
+
+      async function rejectGuarantee() {
+        const loanId = document.getElementById("guaranteeActionLoanId").value;
+        try {
+          await p2pLendingContract.methods
+            .rejectGuarantee(loanId)
+            .send({ from: currentAccount });
+          alert("Guarantee rejected");
+        } catch (error) {
+          console.error("Error in rejecting guarantee:", error);
+        }
+      }
+
+      async function provideLoan() {
+        const loanId = document.getElementById("provideLoanId").value;
+        try {
+          await p2pLendingContract.methods
+            .provideLoan(loanId)
+            .send({ from: currentAccount });
+          alert("Loan provided");
+        } catch (error) {
+          console.error("Error in providing loan:", error);
+        }
+      }
+
+      async function repayLoan() {
+        const loanId = document.getElementById("repayLoanId").value;
+        try {
+          await p2pLendingContract.methods
+            .repayLoan(loanId)
+            .send({ from: currentAccount });
+          alert("Loan repaid");
+        } catch (error) {
+          console.error("Error in repaying loan:", error);
+        }
+      }
+
+      async function withdrawGuarantee() {
+        const loanId = document.getElementById("withdrawGuaranteeLoanId").value;
+        try {
+          await p2pLendingContract.methods
+            .withdrawGuarantee(loanId)
+            .send({ from: currentAccount });
+          alert("Guarantee withdrawn");
+        } catch (error) {
+          console.error("Error in withdrawing guarantee:", error);
+        }
+      }
+
+      async function getLoanDetails() {
+        const loanId = document.getElementById("getLoanDetailsId").value;
+        try {
+          const details = await p2pLendingContract.methods
+            .getLoanDetails(loanId)
+            .call();
+          document.getElementById("loanDetails").innerText = JSON.stringify(
+            details,
+            null,
+            2
+          );
+        } catch (error) {
+          console.error("Error in getting loan details:", error);
+        }
+      }
+
+      document
+        .getElementById("connectWallet")
+        .addEventListener("click", connectWallet);
+    </script>
+  </body>
+</html>
