@@ -22,13 +22,28 @@ Key points about this implementation:
 
     - Ensures all amounts are correct when providing guarantees, loans, or repayments
     - Checks that only authorized addresses (borrower, lender, or guarantor) can perform certain actions
-   - Verifies that actions are taken in the correct order (e.g., guarantee must be provided before loan, loan must be funded before repayment)
+    - Verifies that actions are taken in the correct order (e.g., guarantee must be provided before loan, loan must be funded before repayment)
     - Prevents double-funding or double-repayment of loans
 
 
 6.) The getLoanDetails function allows anyone to view the full details of a loan request, satisfying the requirement for lenders to be able to view loan information.
 
 7.) The contract uses the payable keyword and transfer function to handle Ether transactions securely.
+
+How to use this system:
+
+    1.) Deploy the Contract: deploy this contract to the Ethereum network.
+    2.) Request a Loan: the borrower calls requestLoan(uint256 _amount, uint256 _repaymentDate, uint256 _interest)
+    Example: requestLoan(1 ether, 1678900000, 0.1 ether) This creates a loan request with a unique ID.
+    3.) Provide a Guarantee: a guarantor calls provideGuarantee(uint256 _loanId, uint256 _guarantorInterest) and sends the required Ether. This locks the guarantor's funds in the contract.
+    4.) Accept or Reject the Guarantee: the borrower calls either acceptGuarantee(uint256 _loanId) or rejectGuarantee(uint256 _loanId). If rejected, the guarantor's funds are returned.
+    5.) Provide the Loan: a lender calls provideLoan(uint256 _loanId) and sends the required Ether. This sends the loan amount to the borrower.
+    6.) Repay the Loan: when the loan is due, the borrower calls repayLoan(uint256 _loanId) and sends the loan amount plus interest. This repays the loan, sends funds to the lender and guarantor
+    7.) Withdraw Guarantee (if loan isn't repaid): if the loan isn't repaid by the due date, the lender can call withdrawGuarantee(uint256 _loanId). This sends the guarantee to the lender
+
+At any point, anyone can call getLoanDetails(uint256 _loanId) to view the current state of a loan.
+
+All functions that send Ether (like provideGuarantee, provideLoan, and repayLoan) need to be called with the correct amount of Ether attached to the transaction. This ensures that the contract can handle the funds correctly and that the loan process works as intended.
 
 */
 

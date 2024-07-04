@@ -1,119 +1,103 @@
 /*
- 
-This contract facilitates peer-to-peer lending between borrowers and lenders. It allows borrowers to request loans, lenders to provide loans, and guarantors to provide guarantees for loans. The contract uses an ERC20 token to represent the loan amount and interest.
 
-Key features of the contract:
+This contract facilitates peer-to-peer lending between borrowers and lenders. Borrowers can request loans by providing the loan amount, repayment date, and interest rate. Lenders can fund the loans, and guarantors can provide guarantees for the loans. Borrowers can repay the loans, and lenders can withdraw guarantees if the repayment date has passed. The contract also supports NFT payments as an alternative to token payments.
 
-1. LoanRequest struct: Stores information about a loan request, including the borrower's address, loan amount, repayment date, interest rate, guarantor's address, guarantor's interest rate, lender's address, and loan status.
+The contract includes the following functionalities:
 
-2. loanRequests mapping: Maps loan IDs to LoanRequest structs to store loan requests made by borrowers.
+1. Loan Requests: Borrowers can request loans by providing the loan amount, repayment date, and interest rate. The contract stores the loan requests and assigns a unique loan ID to each request.
 
-3. requestLoan function: Allows a borrower to request a loan by providing the loan amount, repayment date, and interest rate. Creates a new loan request and emits a LoanRequested event.
+2. Guarantees: Guarantors can provide guarantees for loans by specifying the guarantor interest rate. The contract ensures that the guarantor interest rate does not exceed the total interest rate of the loan.
 
-4. provideGuarantee function: Allows a guarantor to provide a guarantee for a loan by providing the loan ID and guarantor interest rate. Transfers the loan amount from the guarantor to the contract and emits a GuaranteeProvided event.
+3. Loan Funding: Lenders can fund loans that are guaranteed. The contract transfers the loan amount from the lender to the borrower.
 
-5. acceptGuarantee function: Allows a borrower to accept a guarantee for a loan by providing the loan ID. Emits a GuaranteeAccepted event.
+4. Loan Repayment: Borrowers can repay loans by transferring the total repayment amount to the contract. The contract distributes the repayment amount to the lender and guarantor.
 
-6. rejectGuarantee function: Allows a borrower to reject a guarantee for a loan by providing the loan ID. Transfers the loan amount back to the guarantor and emits a GuaranteeRejected event.
+5. Guarantee Withdrawal: Lenders can withdraw guarantees for loans if the repayment date has passed and the loan is not yet repaid. The contract transfers the loan amount back to the lender.
 
-7. provideLoan function: Allows a lender to provide a loan for a guaranteed loan request by providing the loan ID. Transfers the loan amount from the lender to the borrower and emits a LoanFunded event.
+6. NFT Payments: Borrowers can propose NFT payments as an alternative to token payments. Lenders can accept or reject NFT offers, and the contract transfers the NFT to the lender if the offer is accepted.
 
-8. repayLoan function: Allows a borrower to repay a loan by providing the loan ID. Transfers the total repayment amount from the borrower to the contract, updates the loan status, and transfers the loan amount and interest to the lender and guarantor respectively. Emits a LoanRepaid event.
+The contract uses the OpenZeppelin ERC20 and ERC721 interfaces for token and NFT interactions. The contract also inherits from the ERC721Holder contract to receive ERC721 tokens.
 
-9. withdrawGuarantee function: Allows a lender to withdraw a guarantee for a loan by providing the loan ID. Transfers the loan amount back to the lender, updates the loan status, and emits a GuaranteeWithdrawn event.
+The contract is implemented in the Solidity programming language (version 0.8.0).
 
-10. getLoanDetails function: Allows external callers to retrieve the details of a loan request by providing the loan ID. Returns the borrower's address, loan amount, repayment date, interest rate, guarantor's address, guarantor interest rate, lender's address, and loan status.
+Key changes and additions:
 
-Key changes from Problem 1 and explanations:
+Added an NFTOffer struct to store information about NFT payment proposals.
 
-A custom LoanToken contract that implements the ERC20 standard. This includes all the required functions and events for an ERC20 token.
+Three new functions were added to handle NFT payments:
 
-The P2PLending contract now uses the LoanToken contract to represent the loan amount and interest. 
+    proposeNFTPayment: Allows a borrower to propose an NFT as payment.
+    acceptNFTOffer: Allows a lender to accept an NFT offer.
+    rejectNFTOffer: Allows a lender to reject an NFT offer.
 
-In the P2PLending contract, an IERC20 interface is defined to interact with the LoanToken contract.
 
-The IERC20 interface methods (transfer, transferFrom) are used for all token transactions.
+Added new events to track NFT offer proposals, acceptances, and rejections.
+The contract  inherits from ERC721Holder, allowing it to receive ERC721 tokens.
 
-Error handling is done by checking the return value of the token transfer functions and using require statements.
+In the acceptNFTOffer function, both partial and full repayments are handled:
 
-The overall logic of the P2PLending contract remains the same, but now it uses LoanToken for all transactions instead of Ether.
+If the NFT value covers the entire loan, the loan is marked as repaid and the guarantee is handled if applicable.
+
+If it's a partial repayment, the loan amount is updated accordingly.
+
+Added checks to ensure that only the borrower can propose NFT payments and only the lender can accept or reject them.
 
 How to use this system:
 
-1.) Deploy the LoanToken contract with an initial supply.
-2.) Deploy the P2PLending contract, passing the address of the LoanToken contract.
-3.) Users acquire LoanTokens.
-4.) Users need to approve the P2PLending contract to spend their LoanTokens before interacting with it (using the approve function of the LoanToken contract).
-5.) The flow of interactions remains the same as before, but now users are spending LoanTokens instead of Ether.
-  
- */
+1.) The borrower must first approve the P2PLending contract to transfer their NFT (using the NFT contract's setApprovalForAll function).
+2.) The borrower can then call proposeNFTPayment to offer an NFT as repayment.
+3.) The lender can either acceptNFTOffer or rejectNFTOffer.
+4.) If accepted, the NFT is transferred to the lender, and the loan amount is adjusted or marked as repaid.
+
+*/
 
 // SPDX-License-Identifier: MIT
 pragma solidity ^0.8.0;
 
-interface IERC20 { // brief ERC20 token interface
-    function totalSupply() external view returns (uint256); // his function returns the total number of tokens in circulation. It is a constant value that is set at contract deployment. It is an external view function, which means that it can be called from outside the contract and does not modify the contract state.
-    function balanceOf(address account) external view returns (uint256); // This function returns the token balance of a specific account. It takes an address as an argument and returns the balance of the account. It is an external view function, which means that it can be called from outside the contract and does not modify the contract state.
-    function transfer(address recipient, uint256 amount) external returns (bool); // This function transfers a specified amount of tokens from the contract owner's account to the recipient's account. It takes the recipient's address and the amount of tokens to transfer as arguments. It returns a boolean value indicating whether the transfer was successful. It is an external function, which means that it can be called from outside the contract and modifies the contract state. The transfer function emits a Transfer event when tokens are transferred.
-    function allowance(address owner, address spender) external view returns (uint256); // This function returns the amount of tokens that the spender is allowed to spend on behalf of the owner. It takes the owner's address and the spender's address as arguments and returns the allowance amount. It is an external view function, which means that it can be called from outside the contract and does not modify the contract state.
-    function approve(address spender, uint256 amount) external returns (bool); // This function allows the owner to approve the spender to spend a specified amount of tokens on their behalf. It takes the spender's address and the amount of tokens to approve as arguments. It returns a boolean value indicating whether the approval was successful. It is an external function, which means that it can be called from outside the contract and modifies the contract state. The approve function emits an Approval event when the approval is granted.
-    function transferFrom(address sender, address recipient, uint256 amount) external returns (bool);
+import "@openzeppelin/contracts/token/ERC20/IERC20.sol"; // Import the IERC20 interface
+import "@openzeppelin/contracts/token/ERC721/IERC721.sol"; // Import the IERC721 interface
+import "@openzeppelin/contracts/token/ERC721/utils/ERC721Holder.sol"; // Import the ERC721Holder contract
 
-    event Transfer(address indexed from, address indexed to, uint256 value); // This event is emitted when tokens are transferred from one account to another. It includes the sender's address, the recipient's address, and the amount of tokens transferred as indexed parameters.
-    event Approval(address indexed owner, address indexed spender, uint256 value); // This event is emitted when the owner approves the spender to spend a specified amount of tokens on their behalf. It includes the owner's address, the spender's address, and the amount of tokens approved as indexed parameters.
-}
+contract P2PLending is ERC721Holder { // Inherit from ERC721Holder contract to receive ERC721 tokens in the contract address 
+    IERC20 public loanToken; // Declare the IERC20 interface variable to store the loan token address 
 
-contract P2PLending { // This declares a new contract named P2PLending. The contract is used to facilitate peer-to-peer lending between borrowers and lenders. It allows borrowers to request loans, lenders to provide loans, and guarantors to provide guarantees for loans. The contract uses an ERC20 token to represent the loan amount and interest.
-    IERC20 public loanToken; // This declares a public state variable named loanToken of type IERC20. The variable is used to store the address of the ERC20 token contract used for loans.
-
-    struct LoanRequest { // This declares a new struct named LoanRequest. The struct is used to store information about a loan request, including the borrower's address, the loan amount, the repayment date, the interest rate, the guarantor's address, the guarantor's interest rate, the lender's address, and the loan status.
-        address borrower; // This declares a public state variable named borrower of type address. The variable is used to store the address of the borrower who requested the loan.
-        uint256 amount; // This declares a public state variable named amount of type uint256. The variable is used to store the amount of the loan requested by the borrower.
-        uint256 repaymentDate; // This declares a public state variable named repaymentDate of type uint256. The variable is used to store the date on which the loan is due for repayment.
-        uint256 interest; // This declares a public state variable named interest of type uint256. The variable is used to store the interest rate of the loan.
-        address guarantor; // This declares a public state variable named guarantor of type address. The variable is used to store the address of the guarantor who provided the guarantee for the loan.
-        uint256 guarantorInterest; // This declares a public state variable named guarantorInterest of type uint256. The variable is used to store the interest rate of the guarantor for providing the guarantee.
-        address lender; // This declares a public state variable named lender of type address. The variable is used to store the address of the lender who provided the loan.
-        bool isActive; // This declares a public state variable named isActive of type bool. The variable is used to store the status of the loan request, indicating whether the loan is active or not.
-        bool isGuaranteed;  // This declares a public state variable named isGuaranteed of type bool. The variable is used to store the status of the loan request, indicating whether the loan is guaranteed or not.
-        bool isRepaid; // This declares a public state variable named isRepaid of type bool. The variable is used to store the status of the loan request, indicating whether the loan is repaid or not.
+    struct LoanRequest { // Define a struct to store the loan request details 
+        address borrower;
+        uint256 amount;
+        uint256 repaymentDate;
+        uint256 interest;
+        address guarantor;
+        uint256 guarantorInterest;
+        address lender;
+        bool isActive;
+        bool isGuaranteed;
+        bool isRepaid;
     }
 
-    mapping(uint256 => LoanRequest) public loanRequests; // This declares a public state variable named loanRequests of type mapping(uint256 => LoanRequest). The variable is used to store the loan requests made by borrowers, with the loan ID as the key and the LoanRequest struct as the value.
-    uint256 public loanRequestCount; // This declares a public state variable named loanRequestCount of type uint256. The variable is used to store the total number of loan requests made by borrowers.
+    struct NFTOffer { // Define a struct to store the NFT offer details 
+        address nftContract;
+        uint256 tokenId;
+        uint256 proposedDeduction;
+        bool isActive;
+    }
 
-    event LoanRequested(uint256 indexed loanId, address borrower, uint256 amount, uint256 repaymentDate, uint256 interest); // This declares a new event named LoanRequested. The event is emitted when a borrower requests a loan, and includes the loan ID, the borrower's address, the loan amount, the repayment date, and the interest rate as indexed parameters.
-    event GuaranteeProvided(uint256 indexed loanId, address guarantor, uint256 guarantorInterest); // This declares a new event named GuaranteeProvided. The event is emitted when a guarantor provides a guarantee for a loan, and includes the loan ID, the guarantor's address, and the guarantor's interest rate as indexed parameters.
-    event GuaranteeAccepted(uint256 indexed loanId); // This declares a new event named GuaranteeAccepted. The event is emitted when a borrower accepts a guarantee for a loan, and includes the loan ID as an indexed parameter.
-    event GuaranteeRejected(uint256 indexed loanId); // This declares a new event named GuaranteeRejected. The event is emitted when a borrower rejects a guarantee for a loan, and includes the loan ID as an indexed parameter.
-    event LoanFunded(uint256 indexed loanId, address lender); // This declares a new event named LoanFunded. The event is emitted when a lender provides a loan, and includes the loan ID and the lender's address as indexed parameters.
-    event LoanRepaid(uint256 indexed loanId); // This declares a new event named LoanRepaid. The event is emitted when a borrower repays a loan, and includes the loan ID as an indexed parameter.
-    event GuaranteeWithdrawn(uint256 indexed loanId); // This declares a new event named GuaranteeWithdrawn. The event is emitted when a lender withdraws a guarantee for a loan, and includes the loan ID as an indexed parameter.
+    mapping(uint256 => LoanRequest) public loanRequests; // Declare a mapping to store the loan requests 
+    mapping(uint256 => NFTOffer) public nftOffers; // Declare a mapping to store the NFT offers 
+    uint256 public loanRequestCount; // Declare a variable to store the loan request count 
+
+    event LoanRequested(uint256 indexed loanId, address borrower, uint256 amount, uint256 repaymentDate, uint256 interest);// Emit an event to log the loan request details including the loan ID, borrower address, loan amount, repayment date, and interest rate. 
+    event GuaranteeProvided(uint256 indexed loanId, address guarantor, uint256 guarantorInterest); // Emit an event to log the guarantee provided details including the loan ID, guarantor address, and guarantor interest rate.
+    event GuaranteeAccepted(uint256 indexed loanId); // Emit an event to log the guarantee accepted details including the loanId.
+    event GuaranteeRejected(uint256 indexed loanId); // Emit an event to log the guarantee rejected details including the loanId.
+    event LoanFunded(uint256 indexed loanId, address lender); // Emit an event to log the loan funded details including the loanId and lender address. 
+    event LoanRepaid(uint256 indexed loanId); // Emit an event to log the loan repaid details including the loanId.
+    event GuaranteeWithdrawn(uint256 indexed loanId); // Emit an event to log the guarantee withdrawn details including the loanId.
+    event NFTOfferProposed(uint256 indexed loanId, address nftContract, uint256 tokenId, uint256 proposedDeduction); // Emit an event to log the NFT offer proposed details including the loanId, NFT contract address, token ID, and proposed deduction.
+    event NFTOfferAccepted(uint256 indexed loanId, address nftContract, uint256 tokenId, uint256 deductedAmount); // Emit an event to log the NFT offer accepted details including the loanId, NFT contract address, token ID, and deducted amount.
+    event NFTOfferRejected(uint256 indexed loanId); // Emit an event to log the NFT offer rejected details including the loanId.
 
     constructor(address _loanTokenAddress) { // This is the constructor function of the contract. It takes an address argument _loanTokenAddress, which is used to initialize the loanToken state variable with the address of the ERC20 token contract used for loans.
         loanToken = IERC20(_loanTokenAddress); // This initializes the loanToken state variable with the address of the ERC20 token contract used for loans.
-    }
-
-    function requestLoan(uint256 _amount, uint256 _repaymentDate, uint256 _interest) external { // This function allows a borrower to request a loan by providing the loan amount, repayment date, and interest rate as arguments. The function creates a new loan request with the borrower's address, loan amount, repayment date, interest rate, and other details, and emits a LoanRequested event. The function increments the loanRequestCount to generate a unique loan ID for the request.
-        require(_amount > 0, "Loan amount must be greater than 0"); // This checks that the loan amount is greater than 0. If the condition is not met, the function reverts with the error message "Loan amount must be greater than 0".
-        require(_repaymentDate > block.timestamp, "Repayment date must be in the future"); // This checks that the repayment date is in the future. If the condition is not met, the function reverts with the error message "Repayment date must be in the future".
-        require(_interest > 0, "Interest must be greater than 0"); // This checks that the interest rate is greater than 0. If the condition is not met, the function reverts with the error message "Interest must be greater than 0".
-
-        loanRequestCount++; // This increments the loanRequestCount to generate a unique loan ID for the request.
-        loanRequests[loanRequestCount] = LoanRequest({ // This creates a new loan request with the borrower's address, loan amount, repayment date, interest rate, and other details, and stores it in the loanRequests mapping with the loan ID as the key.
-            borrower: msg.sender, // This sets the borrower field of the loan request to the address of the borrower who made the request.
-            amount: _amount, // This sets the amount field of the loan request to the loan amount provided by the borrower.
-            repaymentDate: _repaymentDate, // This sets the repaymentDate field of the loan request to the repayment date provided by the borrower.
-            interest: _interest, // This sets the interest field of the loan request to the interest rate provided by the borrower.
-            guarantor: address(0), // This sets the guarantor field of the loan request to the zero address, indicating that no guarantor has provided a guarantee for the loan.
-            guarantorInterest: 0, // This sets the guarantorInterest field of the loan request to 0, indicating that no guarantor has provided a guarantee for the loan.
-            lender: address(0), // This sets the lender field of the loan request to the zero address, indicating that the loan has not yet been funded by a lender.
-            isActive: true, // This sets the isActive field of the loan request to true, indicating that the loan request is active.
-            isGuaranteed: false, // This sets the isGuaranteed field of the loan request to false, indicating that the loan is not yet guaranteed.
-            isRepaid: false // This sets the isRepaid field of the loan request to false, indicating that the loan has not yet been repaid.
-        });
-
-        emit LoanRequested(loanRequestCount, msg.sender, _amount, _repaymentDate, _interest); // This emits a LoanRequested event with the loan ID, borrower's address, loan amount, repayment date, and interest rate as indexed parameters. The event is emitted to notify listeners that a new loan request has been made.
     }
 
     function provideGuarantee(uint256 _loanId, uint256 _guarantorInterest) external { // This function allows a guarantor to provide a guarantee for a loan by providing the loan ID and the guarantor interest rate as arguments. The function checks that the loan request is active, not yet guaranteed, and that the guarantor interest rate does not exceed the total interest rate of the loan. If the conditions are met, the function transfers the loan amount from the guarantor to the contract, sets the guarantor address, guarantor interest rate, and isGuaranteed flag in the loan request, and emits a GuaranteeProvided event.
@@ -227,4 +211,67 @@ contract P2PLending { // This declares a new contract named P2PLending. The cont
             loan.isRepaid 
         );
     }
+
+    function proposeNFTPayment(uint256 _loanId, address _nftContract, uint256 _tokenId, uint256 _proposedDeduction) external {
+        LoanRequest storage loan = loanRequests[_loanId];
+        require(msg.sender == loan.borrower, "Only borrower can propose NFT payment");
+        require(loan.isActive && !loan.isRepaid, "Loan is not active or already repaid");
+        require(_proposedDeduction <= loan.amount + loan.interest, "Proposed deduction exceeds loan amount");
+
+        IERC721 nftContract = IERC721(_nftContract);
+        require(nftContract.ownerOf(_tokenId) == msg.sender, "Borrower does not own this NFT");
+        require(nftContract.isApprovedForAll(msg.sender, address(this)), "Contract is not approved to transfer NFT");
+
+        nftOffers[_loanId] = NFTOffer({
+            nftContract: _nftContract,
+            tokenId: _tokenId,
+            proposedDeduction: _proposedDeduction,
+            isActive: true
+        });
+
+        emit NFTOfferProposed(_loanId, _nftContract, _tokenId, _proposedDeduction);
+    }
+
+    function acceptNFTOffer(uint256 _loanId) external {
+        LoanRequest storage loan = loanRequests[_loanId];
+        NFTOffer storage offer = nftOffers[_loanId];
+        require(msg.sender == loan.lender, "Only lender can accept NFT offer");
+        require(loan.isActive && !loan.isRepaid, "Loan is not active or already repaid");
+        require(offer.isActive, "No active NFT offer for this loan");
+
+        IERC721 nftContract = IERC721(offer.nftContract);
+        nftContract.safeTransferFrom(loan.borrower, loan.lender, offer.tokenId);
+
+        uint256 deductedAmount = offer.proposedDeduction;
+        if (deductedAmount >= loan.amount + loan.interest) {
+            // Loan is fully paid off
+            loan.isRepaid = true;
+            loan.isActive = false;
+            if (loan.isGuaranteed) {
+                loanToken.transfer(loan.guarantor, loan.amount);
+            }
+        } else {
+            // Partially paid off
+            loan.amount = loan.amount + loan.interest - deductedAmount;
+        }
+
+        offer.isActive = false;
+        emit NFTOfferAccepted(_loanId, offer.nftContract, offer.tokenId, deductedAmount);
+
+        if (loan.isRepaid) {
+            emit LoanRepaid(_loanId);
+        }
+    }
+
+    function rejectNFTOffer(uint256 _loanId) external {
+        LoanRequest storage loan = loanRequests[_loanId];
+        NFTOffer storage offer = nftOffers[_loanId];
+        require(msg.sender == loan.lender, "Only lender can reject NFT offer");
+        require(offer.isActive, "No active NFT offer for this loan");
+
+        offer.isActive = false;
+        emit NFTOfferRejected(_loanId);
+    }
+
+    // ... (rest of the contract remains the same)
 }
