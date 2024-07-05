@@ -1,3 +1,49 @@
+/*
+ LoanToken
+
+ of an ERC-20 token.
+ 
+This contract implements the basic functionality of an ERC-20 token called "LoanToken" with the symbol "LOAN". It includes the standard functions for transferring tokens, approving spending by third parties, and delegating transfers. The contract is initialized with an initial supply of tokens, which are assigned to the contract deployer. Users can transfer tokens to other addresses, approve other addresses to spend tokens on their behalf, and allow approved addresses to transfer tokens on their behalf.
+
+Here's an overview of what the contract does:
+
+1.	Contract Declaration: 
+ 	- Defines a contract named "LoanToken"
+ 	- Sets the SPDX license identifier and Solidity version
+2.	Token Properties: 
+ 	- name: "LoanToken"
+ 	- symbol: "LOAN"
+ 	- decimals: 18 (standard for most ERC-20 tokens)
+ 	- totalSupply: stores the total number of tokens
+3.	State Variables: 
+ 	- balanceOf: a mapping to track token balances for each address
+ 	- allowance: a nested mapping to track approved token amounts for spending by third parties
+4.	Events: 
+ 	- Transfer: emitted when tokens are transferred
+ 	- Approval: emitted when an address approves another to spend tokens on its behalf
+5.	Constructor: 
+ 	- Initializes the contract with an initial supply of tokens
+ 	- Assigns all initial tokens to the contract deployer
+6.	Functions: 
+    a. transfer: 
+ 	 -  Allows users to send tokens to another address
+ 	 -  Checks for sufficient balance before transferring
+ 	 -  Updates balances and emits a Transfer event
+    b. approve: 
+ 	 -  Allows users to approve another address to spend a certain amount of their tokens
+ 	 -  Updates the allowance mapping and emits an Approval event
+    c. transferFrom: 
+ 	 -  Allows an approved address to transfer tokens on behalf of the token owner
+ 	 -  Checks for sufficient balance and allowance before transferring
+ 	 -  Updates balances and allowances, and emits a Transfer event
+
+This contract implements the basic functionality of an ERC-20 token, including transfers, approvals, and delegated transfers. 
+
+
+
+ */
+
+
 // SPDX-License-Identifier: MIT
 pragma solidity ^0.8.0; // Solidity version
 

@@ -33,8 +33,7 @@ Key points about this implementation:
 How to use this system:
 
     1.) Deploy the Contract: deploy this contract to the Ethereum network.
-    2.) Request a Loan: the borrower calls requestLoan(uint256 _amount, uint256 _repaymentDate, uint256 _interest)
-    Example: requestLoan(1 ether, 1678900000, 0.1 ether) This creates a loan request with a unique ID.
+    2.) Request a Loan: the borrower calls requestLoan(uint256 _amount, uint256 _repaymentDate, uint256 _interest). This creates a loan request with a unique ID.
     3.) Provide a Guarantee: a guarantor calls provideGuarantee(uint256 _loanId, uint256 _guarantorInterest) and sends the required Ether. This locks the guarantor's funds in the contract.
     4.) Accept or Reject the Guarantee: the borrower calls either acceptGuarantee(uint256 _loanId) or rejectGuarantee(uint256 _loanId). If rejected, the guarantor's funds are returned.
     5.) Provide the Loan: a lender calls provideLoan(uint256 _loanId) and sends the required Ether. This sends the loan amount to the borrower.
